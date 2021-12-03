@@ -35,7 +35,7 @@ def activation(type):
     """
     if type not in SUPPORTED_ACTIVATIONS:
         warnings.warn('Activation function (%s) not supported' % type)
-    f = getattr(tf.nn, type.lower())
+    f = getattr(tf.compat.v1.nn, type.lower())
     return f
 
 
@@ -102,7 +102,7 @@ class AttributionMethod(object):
         # print ('# of keys in feeding dict {}'.format( len(feed_dict.keys())))
         # print (self.has_multiple_inputs, T,feed_dict )
         # print ('feed_dict', feed_dict )
-        for key, value in feed_dict.iteritems():
+        for key, value in feed_dict.items():
             if type(value) == np.ndarray:
                 print(key, type(value), value.shape, value.dtype)
         return self.session.run(T, feed_dict)
@@ -141,7 +141,7 @@ class GradientBasedMethod(AttributionMethod):
         print('hello from symbolic attribution')
         # gradients= K.gradients(self.T, self.X)
         # grad = K.function(inputs=self.inputs, outputs=gradients)
-        gradients = [g for g in tf.gradients(self.T, self.X)]
+        gradients = [g for g in tf.compat.v1.gradients(self.T, self.X)]
         return gradients
 
     def run(self):
@@ -184,12 +184,12 @@ Returns zero attributions. For testing only.
 class DummyZero(GradientBasedMethod):
 
     def get_symbolic_attribution(self, ):
-        return tf.gradients(self.T, self.X)
+        return tf.compat.v1.gradients(self.T, self.X)
 
     @classmethod
     def nonlinearity_grad_override(cls, op, grad):
         input = op.inputs[0]
-        return tf.zeros_like(input)
+        return tf.compat.v1.zeros_like(input)
 
 
 """
@@ -201,7 +201,7 @@ https://arxiv.org/abs/1312.6034
 class Saliency(GradientBasedMethod):
 
     def get_symbolic_attribution(self):
-        return [tf.abs(g) for g in tf.gradients(self.T, self.X)]
+        return [tf.compat.v1.abs(g) for g in tf.compat.v1.gradients(self.T, self.X)]
 
 
 """
@@ -215,7 +215,7 @@ class GradientXInput(GradientBasedMethod):
     def get_symbolic_attribution(self):
         print('hello from GradientXInput')
         # gradients =  [self.X*g for g in K.gradients(self.T, self.X)]
-        gradients = [self.X * g for g in tf.gradients(self.T, self.X)]
+        gradients = [self.X * g for g in tf.compat.v1.gradients(self.T, self.X)]
         # gradients =   K.gradients(self.T, self.X)
 
         # gradients = tf.gradients(self.T, self.X)
@@ -306,7 +306,7 @@ class EpsilonLRP(GradientBasedMethod):
         x = self.X if self.has_multiple_inputs else [self.X]
         print(x)
         import keras.backend as K
-        grad = tf.gradients(K.mean(self.T), self.X)
+        grad = tf.compat.v1.gradients(K.mean(self.T), self.X)
         print(grad)
         z = zip(grad, x)
         print(z)
@@ -318,7 +318,7 @@ class EpsilonLRP(GradientBasedMethod):
         output = op.outputs[0]
         input = op.inputs[0]
         return grad * output / (input + eps *
-                                tf.where(input >= 0, tf.ones_like(input), -1 * tf.ones_like(input)))
+                                tf.compat.v1.where(input >= 0, tf.compat.v1.ones_like(input), -1 * tf.compat.v1.ones_like(input)))
 
 
 """
@@ -340,9 +340,9 @@ class DeepLIFTRescale(GradientBasedMethod):
         # layer_baseline =  self.baseline
         layer_baseline = self.session_run(self.X, self.baseline)
         if self.has_multiple_inputs:
-            ret = [g * (x - b) for g, x, b in zip(tf.gradients(self.T, self.X), self.X, layer_baseline)]
+            ret = [g * (x - b) for g, x, b in zip(tf.compat.v1.gradients(self.T, self.X), self.X, layer_baseline)]
         else:
-            ret = [g * (x - b) for g, x, b in zip(tf.gradients(self.T, self.X), [self.X], [layer_baseline])]
+            ret = [g * (x - b) for g, x, b in zip(tf.compat.v1.gradients(self.T, self.X), [self.X], [layer_baseline])]
         return ret
         # [g * (x - b) for g, x, b in zip(
         # tf.gradients(self.T, self.X),
@@ -358,7 +358,7 @@ class DeepLIFTRescale(GradientBasedMethod):
         delta_out = output - ref_output
         delta_in = input - ref_input
         instant_grad = activation(op.type)(0.5 * (ref_input + input))
-        return tf.where(tf.abs(delta_in) > 1e-5, grad * delta_out / delta_in,
+        return tf.compat.v1.where(tf.compat.v1.abs(delta_in) > 1e-5, grad * delta_out / delta_in,
                         original_grad(instant_grad.op, grad))
 
     def run(self):
@@ -377,7 +377,7 @@ class DeepLIFTRescale(GradientBasedMethod):
         ops = []
         g = self.session.graph
         # get subgraph starting from the target node down
-        subgraph = tf.graph_util.extract_sub_graph(g.as_graph_def(), [self.T.name.split(':')[0]])
+        subgraph = tf.compat.v1.graph_util.extract_sub_graph(g.as_graph_def(), [self.T.name.split(':')[0]])
 
         for n in subgraph.node:
             op = g.get_operation_by_name(n.name)
@@ -498,7 +498,7 @@ def deepexplain_grad(op, grad):
 
 class DeepExplain(object):
 
-    def __init__(self, graph=None, session=tf.get_default_session()):
+    def __init__(self, graph=None, session=tf.compat.v1.get_default_session()):
         self.method = None
         self.batch_size = None
         self.session = session
@@ -565,7 +565,7 @@ class DeepExplain(object):
          and needs to be passed in feed_dict.
         :return:
         """
-        g = tf.get_default_graph()
+        g = tf.compat.v1.get_default_graph()
         for op in g.get_operations():
             if len(op.inputs) > 0 and not op.name.startswith('gradients'):
                 if op.type in UNSUPPORTED_ACTIVATIONS:

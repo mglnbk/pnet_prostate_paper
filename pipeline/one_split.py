@@ -18,6 +18,7 @@ from utils.evaluate import evalualte_survival, evalualte_classification_binary, 
 from utils.plots import generate_plots, plot_roc, plot_prc, save_confusion_matrix
 # timeStamp = '_{0:%b}-{0:%d}_{0:%H}-{0:%M}'.format(datetime.datetime.now())
 from utils.rnd import set_random_seeds
+from sklearn import feature_extraction
 
 
 def save_model(model, model_name, directory_name):
@@ -37,10 +38,8 @@ def get_model_name(model):
         model_name = model['type']
     return model_name
 
-
 class OneSplitPipeline:
     def __init__(self, task, data_params, pre_params, feature_params, model_params, pipeline_params, exp_name):
-
         self.task = task
         if type(data_params) == list:
             self.data_params = data_params
@@ -51,7 +50,7 @@ class OneSplitPipeline:
         self.model_params = model_params
         self.exp_name = exp_name
         self.pipeline_params = pipeline_params
-        print (pipeline_params)
+        # print (pipeline_params)
         if 'save_train' in pipeline_params['params']:
             self.save_train = pipeline_params['params']['save_train']
         else:
@@ -125,9 +124,9 @@ class OneSplitPipeline:
         y_test_list = []
         fig = plt.figure()
         fig.set_size_inches((10, 6))
-        print self.data_params
+        #print(self.data_params)
         for data_params in self.data_params:
-            print 'data_params', data_params
+            #print('data_params', data_params)
             data_id = data_params['id']
             logging.info('loading data....')
             data = Data(**data_params)
@@ -180,6 +179,8 @@ class OneSplitPipeline:
                 y_pred_test_list.append(y_pred_test)
                 y_pred_test_scores_list.append(y_pred_test_scores)
 
+                
+
                 # saving coef
                 self.save_coef([(model, model_params_)], cols)
 
@@ -199,6 +200,10 @@ class OneSplitPipeline:
                     logging.info('model {} -- Train score {}'.format(model_name, train_score))
                     self.save_prediction(info_train, y_pred_train, y_pred_train_scores, y_train, model_name,
                                          training=True)
+
+                # deepExplain
+                if model_params_['type'] == 'nn':
+                    model.get_deep_explain_results(x_train, y_train)
 
         test_scores = pd.DataFrame(test_scores, index=model_names)
         generate_plots(test_scores, self.directory)
@@ -296,7 +301,7 @@ class OneSplitPipeline:
         else:
             y_pred_test_scores = y_pred_test
 
-        print 'y_pred_test', y_pred_test.shape, y_pred_test_scores.shape
+        print('y_pred_test', y_pred_test.shape, y_pred_test_scores.shape)
         return y_pred_test, y_pred_test_scores
 
     def preprocess(self, x_train, x_test):

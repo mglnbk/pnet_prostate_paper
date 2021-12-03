@@ -218,15 +218,15 @@ def get_validation_metastatic(cols, cnv_split):
     all_data = all_data.reindex(columns=order, level=0)
     all_data.fillna(0, inplace=True)
 
-    print 'validation x'
-    print all_data.head()
+    print('validation x')
+    print(all_data.head())
     all_data.to_csv('validatoin_met500.csv')
     x = all_data.as_matrix()
 
     cols = all_data.columns
     rows = pd.DataFrame(index=all_data.index)
     y = np.ones((x.shape[0],))
-    print  'x validation shape', x.shape
+    print('x validation shape', x.shape)
     return x, y, rows, cols
 
 
@@ -239,7 +239,7 @@ class TrainValidatePipeline:
         self.model_params = model_params
         self.exp_name = exp_name
         self.pipeline_params = pipeline_params
-        print pipeline_params
+        print(pipeline_params)
         if 'save_train' in pipeline_params['params']:
             self.save_train = pipeline_params['params']['save_train']
         else:
@@ -265,7 +265,7 @@ class TrainValidatePipeline:
 
     def get_list(self, x, cols):
         x_df = pd.DataFrame(x, columns=cols)
-        print x_df.head()
+        print(x_df.head())
 
         genes = cols.get_level_values(0).unique()
         genes_list = []
@@ -321,9 +321,9 @@ class TrainValidatePipeline:
         info_train_neg2 = info_train[index_neg2]
         info_train2 = np.concatenate((info_train_pos, info_train_neg2))
 
-        print 'training shape: '
-        print x_train1.shape, y_train1.shape, info_train1.shape, cols_train.shape, sum(y_train1)
-        print x_train2.shape, y_train2.shape, info_train2.shape, cols_train.shape, sum(y_train2)
+        print('training shape: ')
+        print(x_train1.shape, y_train1.shape, info_train1.shape, cols_train.shape, sum(y_train1))
+        print(x_train2.shape, y_train2.shape, info_train2.shape, cols_train.shape, sum(y_train2))
 
         # get testing data set (external validation)
         # 1- Primary data set (write the paper here)
@@ -334,9 +334,9 @@ class TrainValidatePipeline:
                                                                                                       cnv_split)
         # x_test_new, y_test_new, info_test_new, cols_test_new = get_validation_primary(cols_train)
 
-        print 'testing shape: '
-        print x_test_mets.shape, y_test_mets.shape, info_test_mets.shape, cols_test_mets.shape
-        print x_test_primary.shape, y_test_primary.shape, info_test_primary.shape, cols_test_primary.shape
+        print('testing shape: ')
+        print(x_test_mets.shape, y_test_mets.shape, info_test_mets.shape, cols_test_mets.shape)
+        print(x_test_primary.shape, y_test_primary.shape, info_test_primary.shape, cols_test_primary.shape)
         # print x_test.shape, y_test.shape, info_test.shape, cols_test.shape
 
         # pre-processing
@@ -408,7 +408,7 @@ class TrainValidatePipeline:
     def save_layer_outputs(self, x_train_layer_outputs, y_train, y_train_pred, x_test_layer_outputs, y_test):
         fig = plt.figure(1, figsize=(10, 9))
         for i, (x_train, x_test) in enumerate(zip(x_train_layer_outputs[:-2], x_test_layer_outputs[:-2])):
-            print x_train[0].shape
+            print(x_train[0].shape)
 
             pca = decomposition.PCA(n_components=50)
             # pca.fit(xx)

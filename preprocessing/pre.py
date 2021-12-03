@@ -5,7 +5,7 @@ from sklearn import preprocessing as p
 
 
 def get_processor(args):
-    print args
+    print(args)
     proc_type = args['type']
     logging.info("Pre-processing: %s", proc_type)
     if proc_type == 'standard':  # 0 mean , 1 variance
@@ -28,7 +28,7 @@ def get_processor(args):
 
         p1 = args['params']
         proc = TfidfTransformer(**p1)
-        print p1
+        print(p1)
 
     else:
         proc = None
@@ -42,8 +42,8 @@ def remove_outliers(y):
     y2 = copy.deepcopy(y)
     s = np.std(y)
     n = 4
-    print n
+    print(n)
     y2[y > m + n * s] = m + n * s
     y2[y < m - n * s] = m - n * s
-    print min(y2), max(y2), np.mean(y2)
+    print(min(y2), max(y2), np.mean(y2))
     return y2

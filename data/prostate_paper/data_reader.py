@@ -50,6 +50,7 @@ def load_data(filename, selected_genes=None):
     all = data.join(labels, how='inner')
     all = all[~all['response'].isnull()]
 
+    all = all.loc[~all.index.duplicated(keep='first')] # remove duplicated indices
     response = all['response']
     samples = all.index
 
@@ -194,7 +195,6 @@ def load_data_type(data_type='gene', cnv_levels=5, cnv_filter_single_event=True,
     if data_type == 'fusion_genes':
         x, response, info, genes = load_data(fusions_genes_filename, selected_genes)
         # x.loc[:,:]=0.
-
     return x, response, info, genes
 
 
@@ -287,7 +287,7 @@ class ProstateDataPaper():
                 selected_genes_file = join(selected_genes_file, selected_genes)
                 df = pd.read_csv(selected_genes_file, header=0)
                 selected_genes = list(df['genes'])
-
+        data_type = list(data_type)
         if type(data_type) == list:
             x_list = []
             y_list = []
@@ -302,8 +302,7 @@ class ProstateDataPaper():
             x = pd.DataFrame(x, columns=cols)
 
         else:
-            x, y, rows, cols = load_data_type(data_type, cnv_levels, cnv_filter_single_event, mut_binary,
-                                              selected_genes)
+            x, y, rows, cols = load_data_type(data_type, cnv_levels, cnv_filter_single_event, mut_binary, selected_genes)
 
         if drop_AR:
 

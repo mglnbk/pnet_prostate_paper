@@ -22,7 +22,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 random_seed = 234
 random.seed(random_seed)
 np.random.seed(random_seed)
-tf.random.set_random_seed(random_seed)
+tf.random.set_seed(random_seed) # set_random_seed
 
 timeStamp = '_{0:%b}-{0:%d}_{0:%H}-{0:%M}'.format(datetime.datetime.now())
 
@@ -98,7 +98,7 @@ for params_file in params_file_list:
     params_file = join(POSTATE_PARAMS_PATH, params_file)
     logging.info('random seed %d' % random_seed)
     params_file_full = params_file + '.py'
-    print params_file_full
+    # print(params_file_full)
     params = imp.load_source(params_file, params_file_full)
 
     DebugFolder(log_dir)

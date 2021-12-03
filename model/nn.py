@@ -2,23 +2,24 @@ import datetime
 import logging
 import math
 import os
+import copy
 
 import numpy as np
 import pandas as pd
-from keras import backend as K
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
+from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
 from sklearn import metrics
 from sklearn.base import BaseEstimator
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.utils import class_weight
 
 from model.callbacks_custom import GradientCheckpoint, FixedEarlyStopping
 from model.model_utils import get_layers, plot_history, get_coef_importance
 from utils.logs import DebugFolder
+from sklearn.utils.class_weight import compute_class_weight 
+import tensorflow as tf
 
-
-class Model(BaseEstimator):
+class Model(tf.Module):
     def __init__(self, build_fn, **sk_params):
         params = sk_params
         params['build_fn'] = build_fn
@@ -166,7 +167,7 @@ class Model(BaseEstimator):
 
     def get_th(self, y_validate, pred_scores):
         thresholds = np.arange(0.1, 0.9, 0.01)
-        print thresholds
+        print(thresholds)
         scores = []
         for th in thresholds:
             y_pred = pred_scores > th
@@ -182,14 +183,14 @@ class Model(BaseEstimator):
             score['th'] = th
             scores.append(score)
         ret = pd.DataFrame(scores)
-        print ret
+        print(ret)
         best = ret[ret.f1 == max(ret.f1)]
         th = best.th.values[0]
         return th
 
     def fit(self, X_train, y_train, X_val=None, y_val=None):
-
-        ret = self.build_fn(**self.model_params)
+        model_params = copy.deepcopy(self.model_params)
+        ret = self.build_fn(**model_params)
         if type(ret) == tuple:
             self.model, self.feature_names = ret
         else:
@@ -200,7 +201,7 @@ class Model(BaseEstimator):
 
         if self.class_weight == 'auto':
             classes = np.unique(y_train)
-            class_weights = class_weight.compute_class_weight('balanced', classes, y_train.ravel())
+            class_weights = compute_class_weight(class_weight='balanced', classes = classes, y=y_train.ravel())
             class_weights = dict(zip(classes, class_weights))
         else:
             class_weights = self.class_weight
@@ -226,11 +227,29 @@ class Model(BaseEstimator):
             validation_data = [X_val, y_val]
         else:
             validation_data = []
+            
+        #print("y: ", np.array(y_train)[0,:]==np.array(y_train)[1,:])
+        #y_train = np.array([int(x) for x in list(np.ravel(y_train))])
+        
+        
+        #validation_data[1] = np.array(validation_data[1])[0,:]
+        #print("vx ", np.array(validation_data[0]).shape)
+        #print("vy ", np.array(validation_data[1]).shape)
+        x_val = validation_data[0]
+        y_val = validation_data[1]
+        
+        #y_val = np.array(validation_data[1]).transpose([1, 0, 2]).squeeze()
+        print("x", X_train.shape)
+        print("y", class_weights)
+        #print("y", np.array(y_train).transpose([1, 0, 2]).squeeze().shape)
+        #np.array(y_train).transpose([1, 0, 2]).squeeze()
 
-        history = self.model.fit(X_train, y_train, validation_data=validation_data, epochs=self.nb_epoch,
+        sample_weight = [class_weights[1] if i==1 else class_weights[0] for i in y_train[0]]
+        
+        history = self.model.fit(X_train, y_train, validation_data=[x_val, y_val], epochs=self.nb_epoch,
                                  batch_size=self.batch_size,
                                  verbose=self.verbose, callbacks=callbacks,
-                                 shuffle=self.shuffle, class_weight=class_weights)
+                                 shuffle=self.shuffle, sample_weight=np.array(sample_weight))
 
         '''
         saving history
@@ -249,11 +268,20 @@ class Model(BaseEstimator):
             self.th = self.get_th(y_train, pred_validate_score)
             logging.info('prediction threshold {}'.format(self.th))
 
-        if hasattr(self, 'feature_importance'):
-            self.coef_ = self.get_coef_importance(X_train, y_train, target=-1,
-                                                  feature_importance=self.feature_importance)
+        # Important! 
+        # if hasattr(self, 'feature_importance'):
+        #     print(type(self.model))
+        #     self.coef_ = self.get_coef_importance(X_train, y_train, target=-1,
+        #                                           feature_importance=self.feature_importance)
 
         return self
+    def get_deep_explain_results(self, X_train, y_train):
+        if len(y_train)>1:
+            y_train = y_train[0]
+        if hasattr(self, 'feature_importance'):
+            print(type(self.model))
+            self.coef_ = self.get_coef_importance(X_train, y_train, target=-1,
+                                                  feature_importance=self.feature_importance)
 
     def get_coef_importance(self, X_train, y_train, target=-1, feature_importance='deepexplain_grad*input'):
 
@@ -291,7 +319,7 @@ class Model(BaseEstimator):
                 else:
                     prediction_scores = prediction_scores[-1]
 
-        print np.array(prediction_scores).shape
+        print(np.array(prediction_scores).shape)
         return np.array(prediction_scores)
 
     def predict_proba(self, X_test):
@@ -303,7 +331,7 @@ class Model(BaseEstimator):
         ret = np.ones((n_samples, 2))
         ret[:, 0] = 1. - prediction_scores.ravel()
         ret[:, 1] = prediction_scores.ravel()
-        print ret.shape
+        print(ret.shape)
         return ret
 
     def score(self, x_test, y_test):

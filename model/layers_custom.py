@@ -3,10 +3,10 @@
 import keras
 import numpy as np
 from keras import regularizers
-from keras.engine import Layer
+from keras.layers import Layer # from keras.engine import Layer
 # from keras import initializations
 from keras.initializers import glorot_uniform, Initializer
-from keras.layers import activations, initializers, constraints
+from keras import activations, initializers, constraints # from keras.layers import activations, initializers, constraints
 # our layer will take input shape (nb_samples, 1)
 from keras.regularizers import Regularizer
 
@@ -60,7 +60,7 @@ class AttLayer(Layer):
         return weighted_input
 
     def compute_output_shape(self, input_shape):
-        print 'AttLayer input_shape', input_shape
+        print('AttLayer input_shape', input_shape)
         return (input_shape[0], input_shape[-1])
         # return (input_shape[0])
 
@@ -96,7 +96,7 @@ class Diagonal(Layer):
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  bias_initializer='zeros',
-                 W_regularizer=None,
+                 kernel_regularizer=None,
                  bias_regularizer=None,
                  kernel_constraint=None,
                  bias_constraint=None,
@@ -109,9 +109,9 @@ class Diagonal(Layer):
         self.use_bias = use_bias
         self.bias_initializer = initializers.get(bias_initializer)
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.W_regularizer = W_regularizer
+        self.kernel_regularizer = kernel_regularizer
         self.bias_regularizer = bias_regularizer
-        self.kernel_regularizer = regularizers.get(W_regularizer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.bias_regularizer = regularizers.get(bias_regularizer)
         self.kernel_constraint = constraints.get(kernel_constraint)
         self.bias_constraint = bias_constraint
@@ -122,9 +122,9 @@ class Diagonal(Layer):
         # Create a trainable weight variable for this layer.
         input_dimension = input_shape[1]
         self.kernel_shape = (input_dimension, self.units)
-        print 'input dimension {} self.units {}'.format(input_dimension, self.units)
+        print('input dimension {} self.units {}'.format(input_dimension, self.units))
         self.n_inputs_per_node = input_dimension / self.units
-        print 'n_inputs_per_node {}'.format(self.n_inputs_per_node)
+        print('n_inputs_per_node {}'.format(self.n_inputs_per_node))
 
         rows = np.arange(input_dimension)
         cols = np.arange(self.units)
@@ -132,7 +132,7 @@ class Diagonal(Layer):
         self.nonzero_ind = np.column_stack((rows, cols))
 
         # print 'self.nonzero_ind', self.nonzero_ind
-        print 'self.kernel_initializer', self.W_regularizer, self.kernel_initializer, self.kernel_regularizer
+        print('self.kernel_initializer', self.kernel_regularizer, self.kernel_initializer, self.kernel_regularizer)
         self.kernel = self.add_weight(name='kernel',
                                       shape=(input_dimension,),
                                       # initializer='uniform',
@@ -152,14 +152,14 @@ class Diagonal(Layer):
         super(Diagonal, self).build(input_shape)  # Be sure to call this somewhere!
 
     def call(self, x, mask=None):
-        n_features = x._keras_shape[1]
-        print 'input dimensions {}'.format(x._keras_shape)
+        n_features = x.shape[1] # _keras_shape
+        print('input dimensions {}'.format(x.shape)) # _keras_shape
 
         kernel = K.reshape(self.kernel, (1, n_features))
         mult = x * kernel
-        mult = K.reshape(mult, (-1, self.n_inputs_per_node))
+        mult = K.reshape(mult, (-1, int(self.n_inputs_per_node)))
         mult = K.sum(mult, axis=1)
-        output = K.reshape(mult, (-1, self.units))
+        output = K.reshape(mult, (-1, int(self.units)))
 
         if self.use_bias:
             output = K.bias_add(output, self.bias)
@@ -180,13 +180,13 @@ class Diagonal(Layer):
             'units': self.units,
             'activation': self.activation,
             'use_bias': self.use_bias,
-            # 'W_regularizer' : self.W_regularizer,
+            # 'kernel_regularizer' : self.kernel_regularizer,
             # 'bias_regularizer' : self.bias_regularizer,
 
         }
         # 'kernel_initializer' : self.kernel_initializer,
         # 'bias_initializer' : self.bias_initializer,
-        # 'W_regularizer' : ,
+        # 'kernel_regularizer' : ,
         # 'bias_regularizer' : None
         # 'kernel_shape': self.kernel_shape
         # dsve
@@ -199,7 +199,7 @@ import tensorflow as tf
 
 
 class SparseTF(Layer):
-    def __init__(self, units, map=None, nonzero_ind=None, kernel_initializer='glorot_uniform', W_regularizer=None,
+    def __init__(self, units, map=None, nonzero_ind=None, kernel_initializer='glorot_uniform', kernel_regularizer=None,
                  activation='tanh', use_bias=True,
                  bias_initializer='zeros', bias_regularizer=None, kernel_constraint=None, bias_constraint=None,
                  **kwargs):
@@ -209,7 +209,7 @@ class SparseTF(Layer):
         self.nonzero_ind = nonzero_ind
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.kernel_regularizer = regularizers.get(W_regularizer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.bias_initializer = initializers.get(bias_initializer)
         self.bias_regularizer = regularizers.get(bias_regularizer)
         self.activation_fn = activations.get(activation)
@@ -220,11 +220,11 @@ class SparseTF(Layer):
     def build(self, input_shape):
         input_dim = input_shape[1]
         # random sparse constarints on the weights
-        # if self.map is None:
-        #     mapp = np.random.rand(input_dim, self.units)
-        #     mapp = mapp > 0.9
-        #     mapp = mapp.astype(np.float32)
-        #     self.map = mapp
+        if self.map is None:
+            mapp = np.random.rand(input_dim, self.units)
+            mapp = mapp > 0.9
+            mapp = mapp.astype(np.float32)
+            self.map = mapp
         # else:
         if not self.map is None:
             self.map = self.map.astype(np.float32)
@@ -328,7 +328,7 @@ class SparseTF(Layer):
             'bias_regularizer': regularizers.serialize(self.bias_regularizer),
 
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
-            'W_regularizer': regularizers.serialize(self.kernel_regularizer),
+            'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
 
         }
         base_config = super(SparseTF, self).get_config()
@@ -353,7 +353,7 @@ class SpraseLayerTF(Layer):
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  bias_initializer='zeros',
-                 W_regularizer=None,
+                 kernel_regularizer=None,
                  bias_regularizer=None,
 
                  **kwargs):
@@ -365,7 +365,7 @@ class SpraseLayerTF(Layer):
         self.use_bias = use_bias
         self.bias_initializer = initializers.get(bias_initializer)
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.kernel_regularizer = regularizers.get(W_regularizer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.bias_regularizer = regularizers.get(bias_regularizer)
         super(SpraseLayerTF, self).__init__(**kwargs)
 
@@ -373,9 +373,9 @@ class SpraseLayerTF(Layer):
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
         input_dimension = input_shape[1]
-        print 'input dimension {}'.format(input_dimension)
+        print('input dimension {}'.format(input_dimension))
         self.n_inputs_per_node = input_dimension / self.units
-        print 'n_inputs_per_node {}'.format(self.n_inputs_per_node)
+        print('n_inputs_per_node {}'.format(self.n_inputs_per_node))
 
         self.kernel = self.add_weight(name='kernel',
                                       shape=(input_dimension,),
@@ -397,9 +397,9 @@ class SpraseLayerTF(Layer):
 
     def call(self, x, mask=None):
 
-        n_features = x._keras_shape[1]
+        n_features = x.shape[1] # _keras_shape
 
-        print 'input dimensions {}'.format(x._keras_shape)
+        print('input dimensions {}'.format(x.shape)) # _keras_shape
         kernel = K.reshape(self.kernel, (1, n_features))
 
         mult = x * kernel
@@ -431,7 +431,7 @@ class SpraseLayerWithConnection(Layer):
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  bias_initializer='zeros',
-                 W_regularizer=None,
+                 kernel_regularizer=None,
                  bias_regularizer=None,
 
                  **kwargs):
@@ -445,14 +445,14 @@ class SpraseLayerWithConnection(Layer):
         self.use_bias = use_bias
         self.bias_initializer = initializers.get(bias_initializer)
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.kernel_regularizer = regularizers.get(W_regularizer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.bias_regularizer = regularizers.get(bias_regularizer)
 
     # the number of weights, equal the number of inputs to the layer
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
         input_dimension = input_shape[1]
-        print 'input dimension {}'.format(input_dimension)
+        print('input dimension {}'.format(input_dimension))
 
         # self.n_inputs_per_node = input_dimension/ self.units
         # print 'n_inputs_per_node {}'.format(self.n_inputs_per_node)
@@ -460,7 +460,7 @@ class SpraseLayerWithConnection(Layer):
         self.edges = []
         # W = []
         self.kernel = []
-        for col in self.mapp.T:
+        for col in self.mapp.T: # 应该是每层对应的连接input -> connected nodes
             connections = np.nonzero(col)
             # print 'connections', type(connections), connections
             self.edges.append(list(connections[0]))
@@ -499,15 +499,15 @@ class SpraseLayerWithConnection(Layer):
 
     def call(self, x, mask=None):
         n_inputs, n_outputs = self.mapp.shape
-        print K.int_shape(x)
+        print(K.int_shape(x))
         output_list = []
         for i in range(n_outputs):
             # print self.edges[i]
             # print K.int_shape(x) , K.int_shape(self.kernel[i])
             # y0 =  x[:, self.edges[i]].dot(self.kernel[i].T)
-            print 'iter {}, weights shape {}, # connections {}'.format(i, K.int_shape(self.kernel[i]),
-                                                                       len(self.edges[i]))
-            print 'connections', self.edges[i]
+            print('iter {}, weights shape {}, # connections {}'.format(i, K.int_shape(self.kernel[i]),
+                                                                       len(self.edges[i])))
+            print('connections', self.edges[i])
             w = self.kernel[i].T
             inn = x[:, self.edges[i]]
             y0 = K.dot(inn, w)
@@ -536,7 +536,7 @@ class SpraseLayerWithConnection(Layer):
         #     output = K.bias_add(output, self.bias)
         # if self.activation is not None:
         #     output = self.activation(output)
-        print 'conactenating '
+        print('conactenating ')
         output = K.concatenate(output_list, axis=-1)
         output = K.reshape(output, (-1, self.units))
         # output = concatenate(output)
@@ -561,7 +561,7 @@ class RandomWithMap(Initializer):
         map_sparse = csr_matrix(self.map)
         # init = np.random.rand(*map_sparse.data.shape)
         init = np.random.normal(10.0, 1., *map_sparse.data.shape)
-        print 'connection map data shape {}'.format(map_sparse.data.shape)
+        print('connection map data shape {}'.format(map_sparse.data.shape))
         # init = np.random.randn(*map_sparse.data.shape).astype(np.float32) * np.sqrt(2.0 / (map_sparse.data.shape[0]))
         initializers.glorot_uniform().__call__()
         map_sparse.data = init
